@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>氧化还原反应互动实验室</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --success: #10b981;
+            --error: #ef4444;
+            --hint: #f59e0b;
+            --na-color: #fbbf24;
+            --cl-color: #4ade80;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+        }
+
+        /* 导航栏样式 */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .nav-btn {
+            background: #e2e8f0;
+            border: none;
+            padding: 8px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--secondary);
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover { background: #cbd5e1; }
+        .nav-btn.active { background: var(--primary); color: white; scale: 1.1; }
+        .nav-btn.completed { background: var(--success); color: white; }
+        .nav-btn-example { border: 2px solid var(--primary); color: var(--primary); }
+
+        /* Na-Cl 动画区 */
+        .reaction-stage {
+            background: #f1f5f9;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .atom {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            transition: all 0.5s;
+            font-size: 1.2em;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .atom-na { background: var(--na-color); margin-right: 100px; color: #78350f; }
+        .atom-cl { background: var(--cl-color); color: #064e3b; }
+
+        .electron-dot {
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            box-shadow: 0 0 8px red;
+            z-index: 10;
+        }
+
+        /* 反应后状态 */
+        .reacted .atom-na { transform: scale(0.85); filter: brightness(1.1); } /* Na失电子变小 */
+        .reacted .atom-cl { transform: scale(1.15); filter: brightness(0.95); } /* Cl得电子变大 */
+        
+        .product-text {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--primary);
+            opacity: 0;
+            transition: opacity 1s;
+        }
+        .reacted .product-text { opacity: 1; }
+
+        /* 电子移动动画 */
+        @keyframes electronTransfer {
+            0% { right: 10px; top: 10px; } /* Start at Na */
+            40% { right: -60px; top: -40px; } /* Arc up */
+            100% { right: -140px; top: 35px; } /* End at Cl (relative to Na) */
+        }
+
+        .animating .electron-dot {
+            animation: electronTransfer 2s ease-in-out forwards;
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+            display: none;
+            animation: fadeIn 0.4s;
+            border-top: 5px solid var(--primary);
+        }
+
+        .card.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-type {
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--secondary);
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .question-text {
+            font-size: 1.15em;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: #1e293b;
+        }
+
+        .chemical-eq {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.3em;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* 互动元素 */
+        .interactive-area {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            text-align: center;
+            background: #f8fafc;
+        }
+
+        .clickable-word {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .clickable-word:hover { background-color: #dbeafe; color: var(--primary); }
+        .clickable-word.selected { background-color: var(--primary); color: white; }
+
+        .draggable-item {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            border-radius: 30px;
+            cursor: grab;
+            user-select: none;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .draggable-item:active { cursor: grabbing; }
+
+        .drop-zone {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 100px;
+            min-height: 60px;
+            background-color: #f0fdf4;
+            border: 2px solid #86efac;
+            border-radius: 10px;
+            margin: 0 10px;
+            vertical-align: middle;
+            transition: background 0.2s;
+        }
+
+        .drop-zone.drag-over { background-color: #bbf7d0; }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background 0.2s;
+            margin: 5px;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn:hover { background-color: var(--primary-hover); }
+
+        .btn-hint {
+            background: transparent;
+            color: var(--hint);
+            border: 1px solid var(--hint);
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        .btn-hint:hover { background: #fffbeb; }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+            text-align: left;
+        }
+
+        .feedback.correct { background-color: #d1fae5; color: #065f46; border-left: 5px solid var(--success); }
+        .feedback.wrong { background-color: #fee2e2; color: #991b1b; border-left: 5px solid var(--error); }
+
+        .hint-text {
+            background: #fffbeb;
+            padding: 15px;
+            border-radius: 8px;
+            color: #92400e;
+            margin-top: 15px;
+            display: none;
+            border-left: 4px solid var(--hint);
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 8px;
+            text-align: center;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 1.1em;
+        }
+
+        /* 结算页样式 */
+        .report-card {
+            border: 4px double var(--primary);
+            padding: 40px;
+            text-align: center;
+            background: #fff;
+            position: relative;
+        }
+        
+        .report-stamp {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            border: 3px solid var(--success);
+            border-radius: 50%;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            transform: rotate(-15deg);
+            opacity: 0.8;
+        }
+
+        .screenshot-hint {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f3f4f6;
+            color: #64748b;
+            font-size: 0.9em;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🧪 氧化还原反应 · 互动实验室</h1>
+        <p>1个经典例题 + 12大核心题型，共13关挑战</p>
+    </header>
+
+    <div class="nav-grid" id="navGrid">
+        </div>
+
+    <div class="card active" id="q0">
+        <div class="question-type">第 0 关：经典例题 · 氧化还原的本质</div>
+        <div class="question-text">
+            <strong>任务：</strong> 点击下方“发生反应”按钮，观察电子转移，并回答问题。
+            <br>反应：<span style="font-family:monospace">2Na + Cl<sub>2</sub> = 2NaCl</span>
+        </div>
+        
+        <div class="reaction-stage" id="naclStage">
+            <div class="atom atom-na">
+                Na
+                <div class="electron-dot" id="e-dot"></div>
+            </div>
+            <div class="atom atom-cl">Cl</div>
+            <div class="product-text" id="prodText">反应生成 NaCl</div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button class="btn" onclick="playNaClReaction()">⚡ 发生反应</button>
+        </div>
+
+        <div class="interactive-area" id="q0-options" style="display:none; text-align: left;">
+            <p><strong>问题：</strong> 在刚才的反应中，Na 发生了什么变化？</p>
+            <label style="display:block; margin:10px 0; cursor:pointer">
+                <input type="radio" name="q0opt" value="lose"> 失去电子，化合价升高，被氧化
+            </label>
+            <label style="display:block; margin:10px 0; cursor:pointer">
+                <input type="radio" name="q0opt" value="gain"> 得到电子，化合价降低，被还原
+            </label>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn" onclick="checkQ0()">提交回答</button>
+            </div>
+        </div>
+
+        <div class="feedback" id="fb0"></div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn" onclick="nextQuestion(0)" id="next0" style="display:none">进入第1关 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q1">
+        <div class="question-type">题型 01: 概念辨析</div>
+        <div class="question-text">
+            <strong>任务：</strong>找出反应中的<span style="color: var(--error)">氧化剂</span>（得电子，化合价降低）。
+            <p>请直接点击下方方程式中的化学式。</p>
+        </div>
+        <div class="chemical-eq">
+            <span class="clickable-word" onclick="checkQ1(this, 'H2')">H<sub>2</sub></span> + 
+            <span class="clickable-word" onclick="checkQ1(this, 'CuO')">CuO</span> 
+            <span>=</span>
+            <span class="clickable-word" onclick="checkQ1(this, 'Cu')">Cu</span> + 
+            <span class="clickable-word" onclick="checkQ1(this, 'H2O')">H<sub>2</sub>O</span>
+        </div>
+        <div class="feedback" id="fb1"></div>
+        <div class="hint-text" id="hint1">💡 口诀：“升失氧，降得还”。氧化剂是抢电子的那个，它的化合价会变低。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(1)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(1)" id="next1" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q2">
+        <div class="question-type">题型 02: 反应类型关系</div>
+        <div class="question-text">
+            <strong>任务：</strong>判断反应 <span style="font-family:monospace; background:#eee; padding:2px 5px;">3CO + Fe<sub>2</sub>O<sub>3</sub> = 2Fe + 3CO<sub>2</sub></span> 是否属于四大基本反应类型（化合、分解、置换、复分解）？
+        </div>
+        <div class="interactive-area">
+            <button class="btn" onclick="checkQ2(true)">属于</button>
+            <button class="btn" onclick="checkQ2(false)">不属于</button>
+        </div>
+        <div class="feedback" id="fb2"></div>
+        <div class="hint-text" id="hint2">💡 检查一下：是“多变一”吗？“一变多”吗？“单质+化合物=单质+化合物”吗？如果都不是，就不属于四大基本类型。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(2)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(2)" id="next2" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q3">
+        <div class="question-type">题型 03: 电子转移表示</div>
+        <div class="question-text">
+            <strong>任务：</strong>对于反应 <span style="font-family:monospace">Fe + 2HCl = FeCl<sub>2</sub> + H<sub>2</sub>↑</span>，请选择正确的电子转移描述。
+        </div>
+        <div class="interactive-area">
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 10px;">
+                <div style="background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; flex: 1; min-width: 140px;" onclick="checkQ3(false)">
+                    <strong>选项 A</strong>
+                    <p>Fe 指向 H</p>
+                    <p style="color: var(--success)">得到 2e<sup>-</sup></p>
+                </div>
+                <div style="background: white; padding: 15px; border: 1px solid var(--primary); border-radius: 8px; cursor: pointer; flex: 1; min-width: 140px;" onclick="checkQ3(true)">
+                    <strong>选项 B</strong>
+                    <p>Fe 指向 Fe<sup>2+</sup></p>
+                    <p style="color: var(--error)">失去 2e<sup>-</sup></p>
+                </div>
+            </div>
+        </div>
+        <div class="feedback" id="fb3"></div>
+        <div class="hint-text" id="hint3">💡 双线桥法规则：箭头从反应物指向生成物中的同种元素。Fe变成Fe<sup>2+</sup>是化合价升高，失去电子。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(3)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(3)" id="next3" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q4">
+        <div class="question-type">题型 04: 据方程式判强弱</div>
+        <div class="question-text">
+            <strong>任务：</strong>已知反应 <span style="font-family:monospace">2FeCl<sub>2</sub> + Cl<sub>2</sub> = 2FeCl<sub>3</sub></span>。
+            <br>请将下方的物质拖拽到横线上，排列出<strong>氧化性</strong>的强弱。
+        </div>
+        <div class="interactive-area">
+            <div id="q4-source">
+                <div class="draggable-item" draggable="true" ondragstart="drag(event)" id="drag-Cl2">Cl<sub>2</sub></div>
+                <div class="draggable-item" draggable="true" ondragstart="drag(event)" id="drag-Fe3">Fe<sup>3+</sup></div>
+            </div>
+            <div style="margin-top: 30px; font-size: 1.5em; font-weight: bold; display: flex; align-items: center; justify-content: center;">
+                <div class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" id="zone1"></div>
+                <span style="margin: 0 10px;">&gt;</span>
+                <div class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" id="zone2"></div>
+            </div>
+        </div>
+        <div style="text-align: center;">
+            <button class="btn" onclick="checkQ4()">提交排序</button>
+        </div>
+        <div class="feedback" id="fb4"></div>
+        <div class="hint-text" id="hint4">💡 规律：氧化剂(反应物)的氧化性 > 氧化产物(生成物)的氧化性。在这个反应里，谁是氧化剂？</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(4)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(4)" id="next4" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q5">
+        <div class="question-type">题型 05: 金属活动性顺序</div>
+        <div class="question-text">
+            <strong>任务：</strong>已知金属活动性 Mg > Fe > Cu。请判断离子的<strong>氧化性</strong>强弱。
+        </div>
+        <div class="interactive-area">
+            <select id="q5-select" style="padding: 10px; font-size: 1.1em; border-radius: 6px;">
+                <option value="">点击选择正确答案...</option>
+                <option value="wrong">Mg<sup>2+</sup> > Fe<sup>2+</sup> > Cu<sup>2+</sup></option>
+                <option value="correct">Cu<sup>2+</sup> > Fe<sup>2+</sup> > Mg<sup>2+</sup></option>
+            </select>
+        </div>
+        <div style="text-align: center;">
+            <button class="btn" onclick="checkQ5()">确定</button>
+        </div>
+        <div class="feedback" id="fb5"></div>
+        <div class="hint-text" id="hint5">💡 口诀：“子强母弱”。金属单质(母)越活泼(还原性强)，对应的离子(子)就越难得电子(氧化性弱)。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(5)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(5)" id="next5" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q6">
+        <div class="question-type">题型 06: 据反应条件判强弱</div>
+        <div class="question-text">
+            <p>① MnO<sub>2</sub> + 4HCl(浓) <span style="font-size:0.8em; border:1px solid #333; border-radius:50%; padding:1px;">△</span> MnCl<sub>2</sub> + Cl<sub>2</sub>↑ + ...</p>
+            <p>② 2KMnO<sub>4</sub> + 16HCl(浓) = 2MnCl<sub>2</sub> + 5Cl<sub>2</sub>↑ + ... (常温)</p>
+            <strong>任务：</strong> 谁的氧化性更强？
+        </div>
+        <div class="interactive-area">
+            <button class="btn" onclick="checkQ6('MnO2')">MnO<sub>2</sub></button>
+            <button class="btn" onclick="checkQ6('KMnO4')">KMnO<sub>4</sub></button>
+        </div>
+        <div class="feedback" id="fb6"></div>
+        <div class="hint-text" id="hint6">💡 规律：让同一个“对手”(HCl)投降，谁需要的条件越简单（不需要加热），谁的本事（氧化性）就越大。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(6)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(6)" id="next6" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q7">
+        <div class="question-type">题型 07: 价态归中规律</div>
+        <div class="question-text">
+            <strong>任务：</strong> KClO<sub>3</sub> (+5价) 与 HCl (-1价) 反应生成 Cl<sub>2</sub>。
+            <br>请问生成的 Cl<sub>2</sub> 是几价？是否符合"只靠拢，不交叉"？
+        </div>
+        <div class="interactive-area" style="text-align: left; display: inline-block;">
+            <label style="cursor: pointer; display: block; margin: 10px 0;">
+                <input type="radio" name="q7" id="q7a" value="0"> 
+                <span style="font-size: 1.1em;">0价，符合 (归中)</span>
+            </label>
+            <label style="cursor: pointer; display: block; margin: 10px 0;">
+                <input type="radio" name="q7" id="q7b" value="1"> 
+                <span style="font-size: 1.1em;">+1价，不符合 (交叉)</span>
+            </label>
+        </div>
+        <div style="text-align: center;">
+            <button class="btn" onclick="checkQ7()">检查答案</button>
+        </div>
+        <div class="feedback" id="fb7"></div>
+        <div class="hint-text" id="hint7">💡 +5价和-1价中间的价态是0。如果不交叉，它们应该停在中间的某个价态。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(7)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(7)" id="next7" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q8">
+        <div class="question-type">题型 08: 反应先后规律</div>
+        <div class="question-text">
+            <strong>情境：</strong> 溶液中同时含有 Fe<sup>3+</sup> 和 Cu<sup>2+</sup>，加入少量铁粉。
+            <br><strong>任务：</strong> 铁粉会先和谁反应？
+        </div>
+        <div class="interactive-area">
+            <button class="btn" onclick="checkQ8('Fe3+')">先和 Fe<sup>3+</sup></button>
+            <button class="btn" onclick="checkQ8('Cu2+')">先和 Cu<sup>2+</sup></button>
+        </div>
+        <div class="feedback" id="fb8"></div>
+        <div class="hint-text" id="hint8">💡 “强者优先”。谁的氧化性（抢电子能力）更强，谁就先吃到铁粉给的电子。已知氧化性 Fe<sup>3+</sup> > Cu<sup>2+</sup>。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(8)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(8)" id="next8" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q9">
+        <div class="question-type">题型 09: 电子守恒计算</div>
+        <div class="question-text">
+            <strong>任务：</strong> 2Na + Cl<sub>2</sub> = 2NaCl。
+            <br>若反应消耗了 1 mol Cl<sub>2</sub> (Cl<sub>2</sub>得到2 mol电子)，则消耗了多少 mol Na？
+        </div>
+        <div class="interactive-area">
+            消耗 Na： <input type="number" id="q9-input" placeholder="?"> mol
+        </div>
+        <div style="text-align: center;">
+            <button class="btn" onclick="checkQ9()">提交计算</button>
+        </div>
+        <div class="feedback" id="fb9"></div>
+        <div class="hint-text" id="hint9">💡 守恒定律：得电子总数 = 失电子总数。1个Na失去1个电子，要提供2mol电子，需要多少Na？</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(9)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(9)" id="next9" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q10">
+        <div class="question-type">题型 10: 方程式配平</div>
+        <div class="question-text">
+            <strong>任务：</strong> 填入正确的化学计量数以配平反应：
+            <br>C + H<sub>2</sub>SO<sub>4</sub>(浓) = CO<sub>2</sub>↑ + SO<sub>2</sub>↑ + H<sub>2</sub>O
+        </div>
+        <div class="interactive-area" style="display: flex; align-items: center; justify-content: center; gap: 5px; flex-wrap: wrap;">
+            <input type="number" id="coef1" value="1" min="1"> C + 
+            <input type="number" id="coef2" value="1" min="1"> H<sub>2</sub>SO<sub>4</sub> <span style="margin:0 5px">=</span>
+            <input type="number" id="coef3" value="1" min="1"> CO<sub>2</sub> +
+            <input type="number" id="coef4" value="1" min="1"> SO<sub>2</sub> +
+            <input type="number" id="coef5" value="1" min="1"> H<sub>2</sub>O
+        </div>
+        <div style="text-align: center;">
+            <button class="btn" onclick="checkQ10()">验证配平</button>
+        </div>
+        <div class="feedback" id="fb10"></div>
+        <div class="hint-text" id="hint10">💡 化合价升降法：C从0变+4（升4）；S从+6变+4（降2）。升降要相等，所以S相关物质系数要是2。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(10)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(10)" id="next10" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+     <div class="card" id="q11">
+        <div class="question-type">题型 11: 陌生方程式书写</div>
+        <div class="question-text">
+            <strong>任务：</strong> 工业制PH<sub>3</sub>：P<sub>4</sub> + 3Ba(OH)<sub>2</sub> + 6H<sub>2</sub>O = 3Ba(H<sub>2</sub>PO<sub>2</sub>)<sub>2</sub> + 2PH<sub>3</sub>↑。
+            <br>请判断：这是歧化反应吗？（即同一种元素既升价又降价）
+        </div>
+        <div class="interactive-area">
+            <button class="btn" onclick="checkQ11(true)">是，P元素既升又降</button>
+            <button class="btn" onclick="checkQ11(false)">不是</button>
+        </div>
+        <div class="feedback" id="fb11"></div>
+        <div class="hint-text" id="hint11">💡 观察化合价：反应物 P<sub>4</sub> 是 0 价。产物中 PH<sub>3</sub> 是 -3 价，Ba(H<sub>2</sub>PO<sub>2</sub>)<sub>2</sub> 中 P 是 +1 价。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(11)">需要提示？</button>
+            <button class="btn" onclick="nextQuestion(11)" id="next11" style="display:none">下一题 ➡</button>
+        </div>
+    </div>
+
+    <div class="card" id="q12">
+        <div class="question-type">题型 12: 综合离子反应</div>
+        <div class="question-text">
+            <strong>任务：</strong> 烟气脱硝原理：2NO + O<sub>2</sub> ⇌ 2NO<sub>2</sub>。
+            <br>请选择 NO 在此反应中的角色。
+        </div>
+        <div class="interactive-area">
+            <button class="btn" onclick="checkQ12('red')">还原剂 (被氧化)</button>
+            <button class="btn" onclick="checkQ12('ox')">氧化剂 (被还原)</button>
+        </div>
+        <div class="feedback" id="fb12"></div>
+        <div class="hint-text" id="hint12">💡 N的化合价从 +2 变为 +4，化合价升高了。升失氧（被氧化）。</div>
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn-hint" onclick="showHint(12)">需要提示？</button>
+            <button class="btn" onclick="finish()" id="next12" style="display:none">完成挑战 🎓</button>
+        </div>
+    </div>
+
+    <div class="card" id="finish-card">
+        <div class="report-card">
+            <div class="report-stamp" id="score-stamp">完成</div>
+            <h2>🎉 恭喜完成训练！</h2>
+            <p>你已经完成了经典例题 + 12类核心题型的练习。</p>
+            <div id="completion-details" style="margin: 20px 0; color: #64748b;">
+                </div>
+            <div class="screenshot-hint">
+                📸 <strong>作业提示：</strong> 请对本页面进行截屏，作为作业凭证提交给老师。
+            </div>
+            <button class="btn" onclick="location.reload()" style="margin-top: 20px;">重新开始</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let currentStep = 0; // 0 是例题，1-12是题型
+    const totalSteps = 12; // 0-12 实际上是13个，但索引最大到12
+    let completionStatus = new Array(13).fill(false); // 索引0对应例题
+
+    // 初始化导航按钮
+    function initNav() {
+        const nav = document.getElementById('navGrid');
+        nav.innerHTML = '';
+        
+        // 生成例题按钮 (id=0)
+        const btnEx = document.createElement('button');
+        btnEx.className = 'nav-btn nav-btn-example active';
+        btnEx.textContent = '例';
+        btnEx.onclick = () => jumpToQuestion(0);
+        btnEx.id = `nav-0`;
+        nav.appendChild(btnEx);
+
+        // 生成1-12按钮
+        for (let i = 1; i <= totalSteps; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'nav-btn';
+            btn.textContent = i;
+            btn.onclick = () => jumpToQuestion(i);
+            btn.id = `nav-${i}`;
+            nav.appendChild(btn);
+        }
+    }
+
+    // 跳转题目
+    function jumpToQuestion(id) {
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        document.getElementById(`q${id}`).classList.add('active');
+        currentStep = id;
+        updateNavState();
+    }
+
+    function updateNavState() {
+        for (let i = 0; i <= totalSteps; i++) {
+            const btn = document.getElementById(`nav-${i}`);
+            btn.classList.remove('active');
+            if (i === currentStep) btn.classList.add('active');
+            if (completionStatus[i]) btn.classList.add('completed');
+        }
+    }
+
+    function markCompleted(id) {
+        completionStatus[id] = true;
+        updateNavState();
+    }
+
+    function showHint(id) {
+        document.getElementById('hint' + id).style.display = 'block';
+    }
+
+    function feedback(id, isCorrect, msg) {
+        const fb = document.getElementById('fb' + id);
+        fb.className = 'feedback ' + (isCorrect ? 'correct' : 'wrong');
+        fb.innerHTML = isCorrect ? '✅ ' + msg : '❌ ' + msg;
+        if (isCorrect) {
+            document.getElementById('next' + id).style.display = 'inline-block';
+            markCompleted(id);
+        }
+    }
+
+    function nextQuestion(id) {
+        document.getElementById('q' + id).classList.remove('active');
+        if (id < totalSteps) {
+            document.getElementById('q' + (id + 1)).classList.add('active');
+            currentStep++;
+            updateNavState();
+        } else {
+            finish();
+        }
+    }
+
+    function finish() {
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        document.getElementById('finish-card').classList.add('active');
+        
+        const completedCount = completionStatus.filter(Boolean).length;
+        const details = document.getElementById('completion-details');
+        details.innerHTML = `已完成关卡：${completedCount} / 13`;
+        
+        if (completedCount === 13) {
+            document.getElementById('score-stamp').textContent = "优秀";
+            document.getElementById('score-stamp').style.borderColor = "#10b981";
+            document.getElementById('score-stamp').style.color = "#10b981";
+        } else {
+            document.getElementById('score-stamp').textContent = "待完";
+            document.getElementById('score-stamp').style.borderColor = "#f59e0b";
+            document.getElementById('score-stamp').style.color = "#f59e0b";
+        }
+    }
+
+    // --- Q0 经典例题逻辑 ---
+    function playNaClReaction() {
+        const stage = document.getElementById('naclStage');
+        stage.classList.remove('animating', 'reacted');
+        void stage.offsetWidth; // 触发重绘
+        stage.classList.add('animating');
+        
+        setTimeout(() => {
+            stage.classList.add('reacted');
+            document.getElementById('q0-options').style.display = 'block';
+            // 更改文本显示电荷
+            document.querySelector('.atom-na').textContent = 'Na⁺';
+            document.querySelector('.atom-cl').textContent = 'Cl⁻';
+        }, 2000);
+    }
+
+    function checkQ0() {
+        const radios = document.getElementsByName('q0opt');
+        let val = '';
+        for(const r of radios) { if(r.checked) val = r.value; }
+        
+        if (val === 'lose') {
+            feedback(0, true, '完全正确！Na失去电子变成Na⁺，化合价由0升高到+1，被氧化，是还原剂。');
+        } else if (val === 'gain') {
+            feedback(0, false, '错误。看动画，电子是从Na跑出去的，所以Na是失去电子。');
+        } else {
+            feedback(0, false, '请选择一个选项。');
+        }
+    }
+
+    // --- Q1 逻辑 ---
+    function checkQ1(element, type) {
+        const words = document.querySelectorAll('#q1 .clickable-word');
+        words.forEach(w => w.classList.remove('selected'));
+        element.classList.add('selected');
+
+        if (type === 'CuO') {
+            feedback(1, true, '正确！CuO 中的 Cu 从 +2 降到 0，得到电子，是氧化剂。');
+        } else if (type === 'H2') {
+            feedback(1, false, '错误。H2 的化合价从 0 升高到 +1，它是还原剂。请找化合价降低的物质。');
+        } else {
+            feedback(1, false, '错误。请在反应物（等号左侧）中寻找氧化剂。');
+        }
+    }
+
+    // --- Q2 逻辑 ---
+    function checkQ2(answer) {
+        if (answer) {
+            feedback(2, false, '不对。这个反应有单质参加但生成的不是单质+化合物（生成物是单质Fe+化合物CO2，但反应物是化合物CO+化合物Fe2O3）。所以它不是置换反应，也不属于其他三种。它只是氧化还原反应。');
+        } else {
+            feedback(2, true, '正确！3CO + Fe2O3 不是化合、分解、置换或复分解，但它是氧化还原反应。');
+        }
+    }
+
+    // --- Q3 逻辑 ---
+    function checkQ3(isRight) {
+        if (isRight) {
+            feedback(3, true, '正确！Fe 变为 Fe<sup>2+</sup>，化合价升高，失去电子。');
+        } else {
+            feedback(3, false, '错误。Fe 是还原剂，应该失去电子。请再检查化合价变化。');
+        }
+    }
+
+    // --- Q4 逻辑 (拖拽) ---
+    function allowDrop(ev) { ev.preventDefault(); }
+    
+    function drag(ev) {
+        ev.dataTransfer.setData("text", ev.currentTarget.id);
+    }
+    
+    function drop(ev) {
+        ev.preventDefault();
+        try {
+            var data = ev.dataTransfer.getData("text");
+            if (!data) return;
+            
+            var originalNode = document.getElementById(data);
+            if (!originalNode) return;
+
+            var nodeCopy = originalNode.cloneNode(true);
+            nodeCopy.removeAttribute("id"); 
+            nodeCopy.style.margin = "0";
+            
+            ev.currentTarget.innerHTML = "";
+            ev.currentTarget.appendChild(nodeCopy);
+        } catch (e) {}
+    }
+    
+    function checkQ4() {
+        const z1 = document.getElementById('zone1').innerText.trim();
+        const z2 = document.getElementById('zone2').innerText.trim();
+        
+        if ((z1.includes('Cl') || z1.includes('2')) && (z2.includes('Fe') || z2.includes('3+'))) {
+            feedback(4, true, '正确！氧化剂 Cl<sub>2</sub> 的氧化性大于氧化产物 Fe<sup>3+</sup>。');
+        } else if (!z1 || !z2) {
+            feedback(4, false, '请先将两个物质拖入方框中。');
+        } else {
+            feedback(4, false, '顺序不对。规律：氧化剂(左边) > 氧化产物(右边)。');
+        }
+    }
+
+    // --- Q5 逻辑 ---
+    function checkQ5() {
+        const val = document.getElementById('q5-select').value;
+        if (val === 'correct') {
+            feedback(5, true, '正确！Mg 最活泼，所以 Mg<sup>2+</sup> 最难抢回电子（氧化性最弱）。');
+        } else if (val === 'wrong') {
+            feedback(5, false, '反了。越活泼的金属，其离子越稳定（氧化性越弱）。');
+        }
+    }
+
+    // --- Q6 逻辑 ---
+    function checkQ6(ans) {
+        if (ans === 'KMnO4') {
+            feedback(6, true, '正确！KMnO<sub>4</sub> 常温就能氧化 HCl，而 MnO<sub>2</sub> 需要加热。条件越容易，氧化性越强。');
+        } else {
+            feedback(6, false, '错误。MnO<sub>2</sub> 需要加热才能反应，说明它比较“懒”，氧化性不如常温就能反应的 KMnO<sub>4</sub>。');
+        }
+    }
+
+    // --- Q7 逻辑 ---
+    function checkQ7() {
+        if (document.getElementById('q7a').checked) {
+            feedback(7, true, '正确！遵循“价态归中，只靠拢不交叉”。+5和-1之间归中到0价。');
+        } else if (document.getElementById('q7b').checked) {
+            feedback(7, false, '不对。Cl<sub>2</sub> 是 0 价。如果生成 +1 价，那就交叉了（-1 越过 0 到了 +1），这是不允许的。');
+        } else {
+            feedback(7, false, '请选择一个答案。');
+        }
+    }
+
+    // --- Q8 逻辑 ---
+    function checkQ8(ans) {
+        if (ans === 'Fe3+') {
+            feedback(8, true, '正确！氧化性 Fe<sup>3+</sup> > Cu<sup>2+</sup>，所以铁粉先和强的 Fe<sup>3+</sup> 反应。');
+        } else {
+            feedback(8, false, '错误。Fe<sup>3+</sup> 的氧化性比 Cu<sup>2+</sup> 强，所以先反应 Fe<sup>3+</sup>。');
+        }
+    }
+
+    // --- Q9 逻辑 ---
+    function checkQ9() {
+        const val = document.getElementById('q9-input').value;
+        if (val == 2) {
+            feedback(9, true, '正确！Cl<sub>2</sub>得2mol电子，1个Na失去1个电子，所以需要 2 mol Na。');
+        } else {
+            feedback(9, false, '算错了。电子守恒：得电子总数 = 失电子总数。Cl<sub>2</sub> 变 2Cl<sup>-</sup> 需 2e<sup>-</sup>。');
+        }
+    }
+
+    // --- Q10 逻辑 ---
+    function checkQ10() {
+        const c1 = document.getElementById('coef1').value; // C
+        const c2 = document.getElementById('coef2').value; // H2SO4
+        const c3 = document.getElementById('coef3').value; // CO2
+        const c4 = document.getElementById('coef4').value; // SO2
+        const c5 = document.getElementById('coef5').value; // H2O
+        
+        if (c1==1 && c2==2 && c3==1 && c4==2 && c5==2) {
+            feedback(10, true, '配平完美！C + 2H<sub>2</sub>SO<sub>4</sub> = CO<sub>2</sub> + 2SO<sub>2</sub> + 2H<sub>2</sub>O');
+        } else {
+            feedback(10, false, '配平不正确。提示：C从0变+4（升4），S从+6变+4（降2）。升降要相等，所以S相关物质系数要是2。');
+        }
+    }
+
+    // --- Q11 逻辑 ---
+    function checkQ11(isYes) {
+        if(isYes) {
+            feedback(11, true, '正确！反应物 P<sub>4</sub>(0价) 生成了 PH<sub>3</sub>(-3价) 和 H<sub>2</sub>PO<sub>2</sub><sup>-</sup>(+1价)，属于歧化反应。');
+        } else {
+            feedback(11, false, '不对。观察化合价，反应物只有一种P价态(0)，产物里有-3价和+1价，这是典型的歧化。');
+        }
+    }
+
+    // --- Q12 逻辑 ---
+    function checkQ12(ans) {
+        if(ans === 'red') {
+            feedback(12, true, '正确！NO中N是+2，NO<sub>2</sub>中N是+4，化合价升高，是还原剂。');
+        } else {
+            feedback(12, false, '错误。NO变成了NO<sub>2</sub>，化合价升高了，应该做还原剂。');
+        }
+    }
+
+    // 初始化
+    initNav();
+</script>
+
+</body>
+</html>
